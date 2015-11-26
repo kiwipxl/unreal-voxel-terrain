@@ -15,7 +15,8 @@
 #include <cmath>
 
 void Perlin::init() {
-    srand(time(NULL));
+	srand(time(NULL));
+	srand(1);
 
     p = new int[256];
     Gx = new float[256];

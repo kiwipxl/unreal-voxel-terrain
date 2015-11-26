@@ -6,38 +6,45 @@
 #include "Components/MeshComponent.h"
 #include "GeneratedMeshComponent.generated.h"
 
-USTRUCT(BlueprintType)
+USTRUCT()
+struct FGeneratedVertexAttribs
+{
+	GENERATED_USTRUCT_BODY()
+
+	FGeneratedVertexAttribs() { }
+	FGeneratedVertexAttribs(int32 _index) { index = _index; }
+
+	UPROPERTY()
+	FVector pos;
+	UPROPERTY()
+	FVector2D uv;
+	UPROPERTY()
+	int32 index;
+};
+
+USTRUCT()
 struct FGeneratedMeshTriangle
 {
 	GENERATED_USTRUCT_BODY()
 
 	FGeneratedMeshTriangle() { }
-	
-	FGeneratedMeshTriangle(FVector v1, FVector v2, FVector v3) : Vertex0(v1), Vertex1(v2), Vertex2(v3) { }
 
-	void set_vertex(FVector v, int index) {
-		if (index == 0) Vertex0 = v;
-		else if (index == 1) Vertex1 = v;
-		else if (index == 2) Vertex2 = v;
-	}
-
-	UPROPERTY(EditAnywhere, Category = Triangle)
-	FVector Vertex0;
-
-	UPROPERTY(EditAnywhere, Category = Triangle)
-	FVector Vertex1;
-
-	UPROPERTY(EditAnywhere, Category = Triangle)
-	FVector Vertex2;
+	UPROPERTY()
+	FGeneratedVertexAttribs v0 = { 0 };
+	UPROPERTY()
+	FGeneratedVertexAttribs v1 = { 1 };
+	UPROPERTY()
+	FGeneratedVertexAttribs v2 = { 2 };
 };
 
 /** Component that allows you to specify generated triangle mesh geometry */
-UCLASS(hidecategories = (Object, LOD, Physics, Collision), editinlinenew, meta = (BlueprintSpawnableComponent), ClassGroup = Rendering)
+UCLASS()
 class UGeneratedMeshComponent : public UMeshComponent
 {
 	GENERATED_UCLASS_BODY()
 
 public:
+
 	///** Set the geometry to use on this triangle mesh */
 	UFUNCTION(BlueprintCallable, Category = "Components|GeneratedMesh")
 	bool SetGeneratedMeshTriangles(const TArray<FGeneratedMeshTriangle>& Triangles);

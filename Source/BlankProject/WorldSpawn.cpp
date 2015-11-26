@@ -8,14 +8,9 @@
 #include "GeneratedMeshComponent.h"
 #include "StaticMeshResources.h"
 
-TSubclassOf<AActor> hex_asset;
-UMaterialInterface* grass_mat_asset;
-UMaterialInterface* water_mat_asset;
-float timer = 0;
+UMaterialInterface* texture_tiles_mat;
 FractalNoise fnoise;
 TArray<FGeneratedMeshTriangle> chunk_triangles;
-FPositionVertexBuffer* vertex_buffer;
-FIndexArrayView index_buffer;
 UGeneratedMeshComponent* custom_mesh;
 
 // Sets default values
@@ -23,20 +18,11 @@ AWorldSpawn::AWorldSpawn() {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	static ConstructorHelpers::FObjectFinder<UBlueprint> hex_asset_class(TEXT("Blueprint'/Game/Hexagon_Blueprint.Hexagon_Blueprint'"));
-    if (hex_asset_class.Object) {
-        hex_asset = (UClass*)hex_asset_class.Object->GeneratedClass;
-	}
-
-    static ConstructorHelpers::FObjectFinder<UMaterial> grass_mat_asset_class(TEXT("Material'/Game/hex_grass_material.hex_grass_material'"));
-    if (grass_mat_asset_class.Object) {
-        grass_mat_asset = (UMaterial*)grass_mat_asset_class.Object;
+    static ConstructorHelpers::FObjectFinder<UMaterial> texture_tiles_mat_class(TEXT("Material'/Game/texture_tiles_mat.texture_tiles_mat'"));
+    if (texture_tiles_mat_class.Object) {
+        texture_tiles_mat = (UMaterial*)texture_tiles_mat_class.Object;
     }
-
-    static ConstructorHelpers::FObjectFinder<UMaterial> water_mat_asset_class(TEXT("Material'/Game/hex_water_material.hex_water_material'"));
-    if (water_mat_asset_class.Object) {
-        water_mat_asset = (UMaterial*)water_mat_asset_class.Object;
-    }
+	UE_LOG(LogTemp, Warning, TEXT("ayy lmao: %p"), texture_tiles_mat);
 }
 
 // Called when the game starts or when spawned
@@ -47,16 +33,6 @@ void AWorldSpawn::BeginPlay() {
 
 	hex_list.clear();
 	chunk_triangles.Empty();
-
-	AActor* new_hex_obj = GetWorld()->SpawnActor<AActor>(hex_asset, FVector::ZeroVector, FRotator(0, -90, 0));
-	UStaticMeshComponent* mesh_component = Cast<UStaticMeshComponent>(new_hex_obj->GetComponentByClass(UStaticMeshComponent::StaticClass()));
-	vertex_buffer = &mesh_component->StaticMesh->RenderData->LODResources[0].PositionVertexBuffer;
-	index_buffer = mesh_component->StaticMesh->RenderData->LODResources[0].IndexBuffer.GetArrayView();
-	new_hex_obj->Destroy();
-
-	SetActorRotation(FRotator(0, -90, 0));
-
-	UE_LOG(LogTemp, Warning, TEXT("num_vertices: %d"), vertex_buffer->GetNumVertices());
 
     fnoise.init();
 	gen_chunk();
@@ -78,6 +54,7 @@ BlockType AWorldSpawn::get_type(int x, int y, int z) {
 	float t_height = get_height(x, y, z);
 	BlockType type = BLOCK_TYPE_AIR;
 	if (t_height > 0 || z == 0) type = BLOCK_TYPE_DIRT;
+	if (z <= 10) type = BLOCK_TYPE_GRASS;
 	return type;
 }
 
@@ -95,142 +72,194 @@ an edge between two vertices, each with their own scalar value
 */
 FVector vertex_interp(FVector p1, FVector p2, bool valp1, bool valp2)
 {
-	if (!valp1) return p1;
-	if (!valp2) return p2;
-	return p1;
+	return p1 + (p2 - p1) / 2.0f;
+}
+
+FVector2D uv_interp(FVector v1, FVector v2, FVector v3, FVector p) {
+	FVector f1 = v1 - p;
+	FVector f2 = v2 - p;
+	FVector f3 = v3 - p;
+
+	float a = ((v1 - v2) ^ (v1 - v3)).Size();
+	float a1 = (f2 ^ f3).Size() / a;
+	float a2 = (f3 ^ f1).Size() / a;
+	float a3 = (f1 ^ f2).Size() / a;
+
+	return FVector2D(0, 0) * a1 + FVector2D(1.0f, 0) * a2 + FVector2D(0.0f, 1.0f) * a3;
 }
 
 void AWorldSpawn::gen_chunk() {
-    if (hex_asset) {
-        for (int z = 0; z < SIZEZ; ++z) {
-            for (int y = 0; y < SIZEY; ++y) {
-                for (int x = 0; x < SIZEX; ++x) {
-                    Hex* hex = new Hex();
-                    hex->x = x;
-                    hex->y = y;
-                    hex->z = z;
-                    hex_list.push_back(hex);
+    for (int z = 0; z < SIZEZ; ++z) {
+        for (int y = 0; y < SIZEY; ++y) {
+            for (int x = 0; x < SIZEX; ++x) {
+                Hex* hex = new Hex();
+                hex->x = x;
+                hex->y = y;
+                hex->z = z;
+                hex_list.push_back(hex);
 
-                    gen_hex(x, y, z);
-                }
+                gen_hex(x, y, z);
             }
         }
+    }
 
-		for (int z = -1; z < SIZEZ; ++z) {
-			for (int y = -1; y < SIZEY; ++y) {
-				for (int x = -1; x < SIZEX; ++x) {
-					bool corner0 = (get_hex(x + 1, y, z + 1) != NULL && get_hex(x + 1, y, z + 1)->type != BLOCK_TYPE_AIR);
-					bool corner1 = (get_hex(x + 1, y + 1, z + 1) != NULL && get_hex(x + 1, y + 1, z + 1)->type != BLOCK_TYPE_AIR);
-					bool corner2 = (get_hex(x, y + 1, z + 1) != NULL && get_hex(x, y + 1, z + 1)->type != BLOCK_TYPE_AIR);
-					bool corner3 = (get_hex(x, y, z + 1) != NULL && get_hex(x, y, z + 1)->type != BLOCK_TYPE_AIR);
+	for (int z = -1; z < SIZEZ; ++z) {
+		for (int y = -1; y < SIZEY; ++y) {
+			for (int x = -1; x < SIZEX; ++x) {
+				bool corner0 = (get_hex(x + 1, y, z + 1) != NULL && get_hex(x + 1, y, z + 1)->type != BLOCK_TYPE_AIR);
+				bool corner1 = (get_hex(x + 1, y + 1, z + 1) != NULL && get_hex(x + 1, y + 1, z + 1)->type != BLOCK_TYPE_AIR);
+				bool corner2 = (get_hex(x, y + 1, z + 1) != NULL && get_hex(x, y + 1, z + 1)->type != BLOCK_TYPE_AIR);
+				bool corner3 = (get_hex(x, y, z + 1) != NULL && get_hex(x, y, z + 1)->type != BLOCK_TYPE_AIR);
 
-					bool corner4 = (get_hex(x + 1, y, z) != NULL && get_hex(x + 1, y, z)->type != BLOCK_TYPE_AIR);
-					bool corner5 = (get_hex(x + 1, y + 1, z) != NULL && get_hex(x + 1, y + 1, z)->type != BLOCK_TYPE_AIR);
-					bool corner6 = (get_hex(x, y + 1, z) != NULL && get_hex(x, y + 1, z)->type != BLOCK_TYPE_AIR);
-					bool corner7 = (get_hex(x, y, z) != NULL && get_hex(x, y, z)->type != BLOCK_TYPE_AIR);
+				bool corner4 = (get_hex(x + 1, y, z) != NULL && get_hex(x + 1, y, z)->type != BLOCK_TYPE_AIR);
+				bool corner5 = (get_hex(x + 1, y + 1, z) != NULL && get_hex(x + 1, y + 1, z)->type != BLOCK_TYPE_AIR);
+				bool corner6 = (get_hex(x, y + 1, z) != NULL && get_hex(x, y + 1, z)->type != BLOCK_TYPE_AIR);
+				bool corner7 = (get_hex(x, y, z) != NULL && get_hex(x, y, z)->type != BLOCK_TYPE_AIR);
 
-					//UE_LOG(LogTemp, Warning, TEXT("(%d, %d, %d): %d, %d, %d, %d, %d, %d, %d, %d"), x, y, z, corner0, corner1, corner2, corner3, corner4, corner5, corner6, corner7);
+				//UE_LOG(LogTemp, Warning, TEXT("(%d, %d, %d): %d, %d, %d, %d, %d, %d, %d, %d"), x, y, z, corner0, corner1, corner2, corner3, corner4, corner5, corner6, corner7);
 
-					FVector vertlist[12];
-					//bool isolevel = corner0 && corner1 && corner2 && corner3 && corner4 && corner5 && corner6 && corner7;
-					//isolevel = false;
-					float isolevel = 1;
+				FVector vertlist[12];
+				float isolevel = 1;
 
-					int cubeindex = 0;
-					if (corner0) cubeindex |= 1;
-					if (corner1) cubeindex |= 2;
-					if (corner2) cubeindex |= 4;
-					if (corner3) cubeindex |= 8;
-					if (corner4) cubeindex |= 16;
-					if (corner5) cubeindex |= 32;
-					if (corner6) cubeindex |= 64;
-					if (corner7) cubeindex |= 128;
+				int cubeindex = 0;
+				if (corner0) cubeindex |= 1;
+				if (corner1) cubeindex |= 2;
+				if (corner2) cubeindex |= 4;
+				if (corner3) cubeindex |= 8;
+				if (corner4) cubeindex |= 16;
+				if (corner5) cubeindex |= 32;
+				if (corner6) cubeindex |= 64;
+				if (corner7) cubeindex |= 128;
 
-					//UE_LOG(LogTemp, Warning, TEXT("%d, %d"), cubeindex, isolevel);
+				//UE_LOG(LogTemp, Warning, TEXT("%d, %d"), cubeindex, isolevel);
 
-					/* Cube is entirely in/out of the surface */
-					if (edgeTable[cubeindex] == 0) continue;
+				/* Cube is entirely in/out of the surface */
+				if (edgeTable[cubeindex] == 0) continue;
 
-					/* Find the vertices where the surface intersects the cube */
-					if (edgeTable[cubeindex] & 1)
-						vertlist[0] = vertex_interp(corner_points[0], corner_points[1], corner0, corner1);
-					if (edgeTable[cubeindex] & 2)
-						vertlist[1] = vertex_interp(corner_points[1], corner_points[2], corner1, corner2);
-					if (edgeTable[cubeindex] & 4)
-						vertlist[2] = vertex_interp(corner_points[2], corner_points[3], corner2, corner3);
-					if (edgeTable[cubeindex] & 8)
-						vertlist[3] = vertex_interp(corner_points[3], corner_points[0], corner3, corner0);
-					if (edgeTable[cubeindex] & 16)
-						vertlist[4] = vertex_interp(corner_points[4], corner_points[5], corner4, corner5);
-					if (edgeTable[cubeindex] & 32)
-						vertlist[5] = vertex_interp(corner_points[5], corner_points[6], corner5, corner6);
-					if (edgeTable[cubeindex] & 64)
-						vertlist[6] = vertex_interp(corner_points[6], corner_points[7], corner6, corner7);
-					if (edgeTable[cubeindex] & 128)
-						vertlist[7] = vertex_interp(corner_points[7], corner_points[4], corner7, corner4);
-					if (edgeTable[cubeindex] & 256)
-						vertlist[8] = vertex_interp(corner_points[0], corner_points[4], corner0, corner4);
-					if (edgeTable[cubeindex] & 512)
-						vertlist[9] = vertex_interp(corner_points[1], corner_points[5], corner1, corner5);
-					if (edgeTable[cubeindex] & 1024)
-						vertlist[10] = vertex_interp(corner_points[2], corner_points[6], corner2, corner6);
-					if (edgeTable[cubeindex] & 2048)
-						vertlist[11] = vertex_interp(corner_points[3], corner_points[7], corner3, corner7);
+				/* Find the vertices where the surface intersects the cube */
+				if (edgeTable[cubeindex] & 1)
+					vertlist[0] = vertex_interp(corner_points[0], corner_points[1], corner0, corner1);
+				if (edgeTable[cubeindex] & 2)
+					vertlist[1] = vertex_interp(corner_points[1], corner_points[2], corner1, corner2);
+				if (edgeTable[cubeindex] & 4)
+					vertlist[2] = vertex_interp(corner_points[2], corner_points[3], corner2, corner3);
+				if (edgeTable[cubeindex] & 8)
+					vertlist[3] = vertex_interp(corner_points[3], corner_points[0], corner3, corner0);
+				if (edgeTable[cubeindex] & 16)
+					vertlist[4] = vertex_interp(corner_points[4], corner_points[5], corner4, corner5);
+				if (edgeTable[cubeindex] & 32)
+					vertlist[5] = vertex_interp(corner_points[5], corner_points[6], corner5, corner6);
+				if (edgeTable[cubeindex] & 64)
+					vertlist[6] = vertex_interp(corner_points[6], corner_points[7], corner6, corner7);
+				if (edgeTable[cubeindex] & 128)
+					vertlist[7] = vertex_interp(corner_points[7], corner_points[4], corner7, corner4);
+				if (edgeTable[cubeindex] & 256)
+					vertlist[8] = vertex_interp(corner_points[0], corner_points[4], corner0, corner4);
+				if (edgeTable[cubeindex] & 512)
+					vertlist[9] = vertex_interp(corner_points[1], corner_points[5], corner1, corner5);
+				if (edgeTable[cubeindex] & 1024)
+					vertlist[10] = vertex_interp(corner_points[2], corner_points[6], corner2, corner6);
+				if (edgeTable[cubeindex] & 2048)
+					vertlist[11] = vertex_interp(corner_points[3], corner_points[7], corner3, corner7);
 
-					/* Create the triangle */
-					int ntriang = 0;
-					FGeneratedMeshTriangle tri;
-					for (int i = 0; triTable[cubeindex][i] != -1; i += 3) {
-						tri.set_vertex(vertlist[triTable[cubeindex][i]] * 100.0f, 2);
-						tri.set_vertex(vertlist[triTable[cubeindex][i + 1]] * 100.0f, 1);
-						tri.set_vertex(vertlist[triTable[cubeindex][i + 2]] * 100.0f, 0);
+				/* Create the triangle */
+				int ntriang = 0;
+				FGeneratedMeshTriangle tri;
+				for (int i = 0; triTable[cubeindex][i] != -1; i += 3) {
+					const int NUM_TILESX = 2;
+					const int NUM_TILESY = 1;
+					const float TILE_SIZEX = 1.0f / NUM_TILESX;
+					const float TILE_SIZEY = 1.0f / NUM_TILESY;
 
-						tri.Vertex0.X += x * 100.0f;
-						tri.Vertex1.X += x * 100.0f;
-						tri.Vertex2.X += x * 100.0f;
+					float offsetx = 0, offsety = 0;
+					Hex* hex = get_hex(x, y, z);
+					if (!hex) continue;
 
-						tri.Vertex0.Y += y * 100.0f;
-						tri.Vertex1.Y += y * 100.0f;
-						tri.Vertex2.Y += y * 100.0f;
+					BlockType type = hex->type;
+					if (type == BLOCK_TYPE_DIRT) offsetx = 0;
+					else if (type == BLOCK_TYPE_GRASS) offsetx = TILE_SIZEX;
 
-						tri.Vertex0.Z += z * 100.0f;
-						tri.Vertex1.Z += z * 100.0f;
-						tri.Vertex2.Z += z * 100.0f;
+					FVector v0 = vertlist[triTable[cubeindex][i]];
+					FVector v1 = vertlist[triTable[cubeindex][i + 1]];
+					FVector v2 = vertlist[triTable[cubeindex][i + 2]];
 
-						chunk_triangles.Add(tri);
+					tri.v2.pos = v0 * 100.0f;
+					tri.v1.pos = v1 * 100.0f;
+					tri.v0.pos = v2 * 100.0f;
 
-						//UE_LOG(LogTemp, Warning, TEXT("--tri--"));
-						//UE_LOG(LogTemp, Warning, TEXT("%f, %f, %f"), tri.Vertex0.X, tri.Vertex0.Y, tri.Vertex0.Z);
-						//UE_LOG(LogTemp, Warning, TEXT("%f, %f, %f"), tri.Vertex1.X, tri.Vertex1.Y, tri.Vertex1.Z);
-						//UE_LOG(LogTemp, Warning, TEXT("%f, %f, %f"), tri.Vertex2.X, tri.Vertex2.Y, tri.Vertex2.Z);
+					float a = sqrt(pow(v1.X - v2.X, 2) + pow(v1.Y - v2.Y, 2));
+					float b = sqrt(pow(v2.X - v0.X, 2) + pow(v2.Y - v0.Y, 2));
+					float c = sqrt(pow(v2.X - v1.X, 2) + pow(v2.Y - v1.Y, 2));
 
-						ntriang++;
-					}
+					float A = cos((pow(b, 2) + pow(c, 2) - pow(a, 2)) / (2 * b * c));
+					float B = cos((pow(a, 2) + pow(c, 2) - pow(b, 2)) / (2 * a * c));
+					float C = cos((pow(a, 2) + pow(b, 2) - pow(c, 2)) / (2 * a * b));
 
+					bool AA = (A < 1.57f);
+					bool BA = (B < 1.57f);
+					bool CA = (C < 1.57f);
+
+					float O1 = AA ? A : B;
+					float O2 = CA ? C : B;
+					float O3 = !AA ? A : !CA ? C : B;
+
+					float T1 = AA ? a : b;
+					float T2 = CA ? c : b;
+					float T3 = !AA ? a : !CA ? c : b;
+
+					FGeneratedVertexAttribs& S1 = AA ? tri.v0 : tri.v1;
+					FGeneratedVertexAttribs& S2 = CA ? tri.v2 : tri.v1;
+					FGeneratedVertexAttribs& S3 = !AA ? tri.v0 : !CA ? tri.v2 : tri.v1;
+
+					float Q = cos(O1) * T2;
+					UE_LOG(LogTemp, Warning, TEXT("%f, %f, %f, %f, %f"), Q, O1, A, B, C);
+
+					S1.uv = FVector2D(0, 0);
+					S2.uv = FVector2D(Q / T1, 1);
+					S3.uv = FVector2D(1, 0);
+
+					UE_LOG(LogTemp, Warning, TEXT("-- uvs --"));
+					UE_LOG(LogTemp, Warning, TEXT("v0: (%d, %f, %f)"), S1.index, S1.uv.X, S1.uv.Y);
+					UE_LOG(LogTemp, Warning, TEXT("v1: (%d, %f, %f)"), S2.index, S2.uv.X, S2.uv.Y);
+					UE_LOG(LogTemp, Warning, TEXT("v2: (%d, %f, %f)"), S3.index, S3.uv.X, S3.uv.Y);
+
+					tri.v0.pos.X += x * 100.0f;
+					tri.v1.pos.X += x * 100.0f;
+					tri.v2.pos.X += x * 100.0f;
+
+					tri.v0.pos.Y += y * 100.0f;
+					tri.v1.pos.Y += y * 100.0f;
+					tri.v2.pos.Y += y * 100.0f;
+
+					tri.v0.pos.Z += z * 100.0f;
+					tri.v1.pos.Z += z * 100.0f;
+					tri.v2.pos.Z += z * 100.0f;
+
+					chunk_triangles.Add(tri);
+
+					//UE_LOG(LogTemp, Warning, TEXT("--tri--"));
+					//UE_LOG(LogTemp, Warning, TEXT("%f, %f, %f"), tri.v0.X, tri.v0.Y, tri.v0.Z);
+					//UE_LOG(LogTemp, Warning, TEXT("%f, %f, %f"), tri.v1.X, tri.v1.Y, tri.v1.Z);
+					//UE_LOG(LogTemp, Warning, TEXT("%f, %f, %f"), tri.v2.X, tri.v2.Y, tri.v2.Z);
+
+					ntriang++;
 				}
+
 			}
 		}
+	}
 
-		custom_mesh = NewObject<UGeneratedMeshComponent>(this);
-		custom_mesh->RegisterComponent();
+	custom_mesh = NewObject<UGeneratedMeshComponent>(this);
+	custom_mesh->RegisterComponent();
 
-		custom_mesh->SetGeneratedMeshTriangles(chunk_triangles);
-		custom_mesh->SetMaterial(0, water_mat_asset);
+	custom_mesh->SetGeneratedMeshTriangles(chunk_triangles);
+	custom_mesh->SetMaterial(0, texture_tiles_mat);
 
-        UE_LOG(LogTemp, Warning, TEXT("spawned"));
-    }else {
-        UE_LOG(LogTemp, Warning, TEXT("Could not find hexagon asset"));
-    }
+    UE_LOG(LogTemp, Warning, TEXT("spawned"));
 }
 
 // Called every frame
 void AWorldSpawn::Tick(float dt) {
     Super::Tick(dt);
-
-    timer += dt;
-
-    if (timer >= 2) {
-		timer = -10000;
-    }
 }
 

@@ -331,9 +331,9 @@ private:
 
     std::vector<Hex*> hex_list;
 
-	const int SIZEX = 100;
-	const int SIZEY = 100;
-	const int SIZEZ = 100;
+	const int SIZEX = 20;
+	const int SIZEY = 20;
+	const int SIZEZ = 20;
 
 	void gen_chunk();
 
