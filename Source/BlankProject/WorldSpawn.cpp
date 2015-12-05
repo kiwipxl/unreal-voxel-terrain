@@ -139,8 +139,6 @@ void AWorldSpawn::gen_chunk() {
 				if (corner6) cubeindex |= 64;
 				if (corner7) cubeindex |= 128;
 
-				//UE_LOG(LogTemp, Warning, TEXT("%d, %d"), cubeindex, isolevel);
-
 				/* Cube is entirely in/out of the surface */
 				if (edgeTable[cubeindex] == 0) continue;
 
@@ -201,6 +199,10 @@ void AWorldSpawn::gen_chunk() {
 					tri.v2.uv = uv;
 					tri.v1.uv = uv;
 					tri.v0.uv = uv;
+
+					tri.v2.colour = FColor(255, 0, 0);
+					tri.v1.colour = FColor(255, 0, 0);
+					tri.v0.colour = FColor(255, 0, 0);
 
 					chunk_triangles.Add(tri);
 				}

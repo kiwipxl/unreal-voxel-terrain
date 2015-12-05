@@ -12,14 +12,13 @@ struct FGeneratedVertexAttribs
 	GENERATED_USTRUCT_BODY()
 
 	FGeneratedVertexAttribs() { }
-	FGeneratedVertexAttribs(int32 _index) { index = _index; }
 
 	UPROPERTY()
 	FVector pos;
 	UPROPERTY()
 	FVector2D uv;
 	UPROPERTY()
-	int32 index;
+	FColor colour;
 };
 
 USTRUCT()
@@ -30,11 +29,11 @@ struct FGeneratedMeshTriangle
 	FGeneratedMeshTriangle() { }
 
 	UPROPERTY()
-	FGeneratedVertexAttribs v0 = { 0 };
+	FGeneratedVertexAttribs v0 = { };
 	UPROPERTY()
-	FGeneratedVertexAttribs v1 = { 1 };
+	FGeneratedVertexAttribs v1 = { };
 	UPROPERTY()
-	FGeneratedVertexAttribs v2 = { 2 };
+	FGeneratedVertexAttribs v2 = { };
 };
 
 /** Component that allows you to specify generated triangle mesh geometry */

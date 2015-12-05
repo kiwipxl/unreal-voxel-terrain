@@ -5,11 +5,11 @@ void FractalNoise::init() {
     m_perlinSource = new Perlin();
     m_perlinSource->init();
 
-	m_octaves = 4;
+	m_octaves = 12;
     m_lacunarity = 1.0f;
     m_persistence = 1.0f;
     m_baseFrequency = 1.5f;
-    m_baseAmplitude = 10.0f;
+    m_baseAmplitude = 20.0f;
 }
 
 FractalNoise::~FractalNoise() {

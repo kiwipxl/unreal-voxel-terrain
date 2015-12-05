@@ -101,8 +101,6 @@ public:
 		: FPrimitiveSceneProxy(Component)
 		, MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel()))
 	{
-		const FColor VertexColor(255, 255, 255);
-
 		// Add each triangle to the vertex/index buffer
 		for (int TriIdx = 0; TriIdx<Component->GeneratedMeshTris.Num(); TriIdx++)
 		{
@@ -117,7 +115,7 @@ public:
 
 			FDynamicMeshVertex Vert0;
 			Vert0.Position = Tri.v0.pos;
-			Vert0.Color = VertexColor;
+			Vert0.Color = Tri.v0.colour;
 			Vert0.SetTangents(TangentX, TangentY, TangentZ);
 			Vert0.TextureCoordinate = Tri.v0.uv;
 			int32 VIndex = VertexBuffer.Vertices.Add(Vert0);
@@ -125,7 +123,7 @@ public:
 
 			FDynamicMeshVertex Vert1;
 			Vert1.Position = Tri.v1.pos;
-			Vert1.Color = VertexColor;
+			Vert1.Color = Tri.v1.colour;
 			Vert1.SetTangents(TangentX, TangentY, TangentZ);
 			Vert1.TextureCoordinate = Tri.v1.uv;
 			VIndex = VertexBuffer.Vertices.Add(Vert1);
@@ -133,7 +131,7 @@ public:
 
 			FDynamicMeshVertex Vert2;
 			Vert2.Position = Tri.v2.pos;
-			Vert2.Color = VertexColor;
+			Vert2.Color = Tri.v2.colour;
 			Vert2.SetTangents(TangentX, TangentY, TangentZ);
 			Vert2.TextureCoordinate = Tri.v2.uv;
 			VIndex = VertexBuffer.Vertices.Add(Vert2);
