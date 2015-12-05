@@ -53,8 +53,13 @@ float AWorldSpawn::get_height(int x, int y, int z) {
 BlockType AWorldSpawn::get_type(int x, int y, int z) {
 	float t_height = get_height(x, y, z);
 	BlockType type = BLOCK_TYPE_AIR;
+
+	//fill all boundaries of chunk with air
+	if (x <= 0 || y <= 0 || z <= 0 || x >= SIZEX - 1 || y >= SIZEY - 1 || z >= SIZEZ - 1) return type;
+
 	if (t_height > 0 || z == 0) type = BLOCK_TYPE_DIRT;
 	if (z <= 10) type = BLOCK_TYPE_GRASS;
+
 	return type;
 }
 
@@ -163,10 +168,11 @@ void AWorldSpawn::gen_chunk() {
 					vertlist[11] = vertex_interp(corner_points[3], corner_points[7], corner3, corner7);
 
 				/* Create the triangle */
-				int ntriang = 0;
 				FGeneratedMeshTriangle tri;
+				FVector world_offset(x * 100.0f, y * 100.0f, z * 100.0f);
+
 				for (int i = 0; triTable[cubeindex][i] != -1; i += 3) {
-					const int NUM_TILESX = 2;
+					/*const int NUM_TILESX = 2;
 					const int NUM_TILESY = 1;
 					const float TILE_SIZEX = 1.0f / NUM_TILESX;
 					const float TILE_SIZEY = 1.0f / NUM_TILESY;
@@ -177,72 +183,17 @@ void AWorldSpawn::gen_chunk() {
 
 					BlockType type = hex->type;
 					if (type == BLOCK_TYPE_DIRT) offsetx = 0;
-					else if (type == BLOCK_TYPE_GRASS) offsetx = TILE_SIZEX;
+					else if (type == BLOCK_TYPE_GRASS) offsetx = TILE_SIZEX;*/
 
 					FVector v0 = vertlist[triTable[cubeindex][i]];
 					FVector v1 = vertlist[triTable[cubeindex][i + 1]];
 					FVector v2 = vertlist[triTable[cubeindex][i + 2]];
 
-					tri.v2.pos = v0 * 100.0f;
-					tri.v1.pos = v1 * 100.0f;
-					tri.v0.pos = v2 * 100.0f;
-
-					float a = sqrt(pow(v1.X - v2.X, 2) + pow(v1.Y - v2.Y, 2));
-					float b = sqrt(pow(v2.X - v0.X, 2) + pow(v2.Y - v0.Y, 2));
-					float c = sqrt(pow(v2.X - v1.X, 2) + pow(v2.Y - v1.Y, 2));
-
-					float A = cos((pow(b, 2) + pow(c, 2) - pow(a, 2)) / (2 * b * c));
-					float B = cos((pow(a, 2) + pow(c, 2) - pow(b, 2)) / (2 * a * c));
-					float C = cos((pow(a, 2) + pow(b, 2) - pow(c, 2)) / (2 * a * b));
-
-					bool AA = (A < 1.57f);
-					bool BA = (B < 1.57f);
-					bool CA = (C < 1.57f);
-
-					float O1 = AA ? A : B;
-					float O2 = CA ? C : B;
-					float O3 = !AA ? A : !CA ? C : B;
-
-					float T1 = AA ? a : b;
-					float T2 = CA ? c : b;
-					float T3 = !AA ? a : !CA ? c : b;
-
-					FGeneratedVertexAttribs& S1 = AA ? tri.v0 : tri.v1;
-					FGeneratedVertexAttribs& S2 = CA ? tri.v2 : tri.v1;
-					FGeneratedVertexAttribs& S3 = !AA ? tri.v0 : !CA ? tri.v2 : tri.v1;
-
-					float Q = cos(O1) * T2;
-					UE_LOG(LogTemp, Warning, TEXT("%f, %f, %f, %f, %f"), Q, O1, A, B, C);
-
-					S1.uv = FVector2D(0, 0);
-					S2.uv = FVector2D(Q / T1, 1);
-					S3.uv = FVector2D(1, 0);
-
-					UE_LOG(LogTemp, Warning, TEXT("-- uvs --"));
-					UE_LOG(LogTemp, Warning, TEXT("v0: (%d, %f, %f)"), S1.index, S1.uv.X, S1.uv.Y);
-					UE_LOG(LogTemp, Warning, TEXT("v1: (%d, %f, %f)"), S2.index, S2.uv.X, S2.uv.Y);
-					UE_LOG(LogTemp, Warning, TEXT("v2: (%d, %f, %f)"), S3.index, S3.uv.X, S3.uv.Y);
-
-					tri.v0.pos.X += x * 100.0f;
-					tri.v1.pos.X += x * 100.0f;
-					tri.v2.pos.X += x * 100.0f;
-
-					tri.v0.pos.Y += y * 100.0f;
-					tri.v1.pos.Y += y * 100.0f;
-					tri.v2.pos.Y += y * 100.0f;
-
-					tri.v0.pos.Z += z * 100.0f;
-					tri.v1.pos.Z += z * 100.0f;
-					tri.v2.pos.Z += z * 100.0f;
+					tri.v2.pos = (v0 * 100.0f) + world_offset;
+					tri.v1.pos = (v1 * 100.0f) + world_offset;
+					tri.v0.pos = (v2 * 100.0f) + world_offset;
 
 					chunk_triangles.Add(tri);
-
-					//UE_LOG(LogTemp, Warning, TEXT("--tri--"));
-					//UE_LOG(LogTemp, Warning, TEXT("%f, %f, %f"), tri.v0.X, tri.v0.Y, tri.v0.Z);
-					//UE_LOG(LogTemp, Warning, TEXT("%f, %f, %f"), tri.v1.X, tri.v1.Y, tri.v1.Z);
-					//UE_LOG(LogTemp, Warning, TEXT("%f, %f, %f"), tri.v2.X, tri.v2.Y, tri.v2.Z);
-
-					ntriang++;
 				}
 
 			}
