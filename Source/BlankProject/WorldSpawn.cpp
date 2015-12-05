@@ -44,9 +44,17 @@ Hex* AWorldSpawn::get_hex(int x, int y, int z) {
     return hex_list[index];
 }
 
+float max_t_height = 0;
+float max_z = 0;
+
 float AWorldSpawn::get_height(int x, int y, int z) {
 	float t_height = fnoise.noise(x / (float)SIZEX, y / (float)SIZEY, z / (float)SIZEZ);
-	t_height -= z / (float)SIZEZ;
+	t_height -= (z / (float)SIZEZ) * 8.0f;
+	if (z >= 95 && t_height > max_t_height) {
+		max_t_height = t_height;
+		max_z = z;
+	}
+
 	return t_height;
 }
 
@@ -57,8 +65,12 @@ BlockType AWorldSpawn::get_type(int x, int y, int z) {
 	//fill all boundaries of chunk with air
 	if (x <= 0 || y <= 0 || z <= 0 || x >= SIZEX - 1 || y >= SIZEY - 1 || z >= SIZEZ - 1) return type;
 
-	if (t_height > 0 || z == 0) type = BLOCK_TYPE_DIRT;
-	if (z <= 10) type = BLOCK_TYPE_GRASS;
+	if (z <= 1) type = BLOCK_TYPE_WATER;
+
+	if (t_height > 0) {
+		type = BLOCK_TYPE_DIRT;
+		if (get_height(x, y, z + 1) < 0) type = BLOCK_TYPE_GRASS;
+	}
 
 	return type;
 }
@@ -77,20 +89,11 @@ an edge between two vertices, each with their own scalar value
 */
 FVector vertex_interp(FVector p1, FVector p2, bool valp1, bool valp2)
 {
+	if (!valp1) return p1;
+	if (!valp2) return p2;
+	return p1;
+
 	return p1 + (p2 - p1) / 2.0f;
-}
-
-FVector2D uv_interp(FVector v1, FVector v2, FVector v3, FVector p) {
-	FVector f1 = v1 - p;
-	FVector f2 = v2 - p;
-	FVector f3 = v3 - p;
-
-	float a = ((v1 - v2) ^ (v1 - v3)).Size();
-	float a1 = (f2 ^ f3).Size() / a;
-	float a2 = (f3 ^ f1).Size() / a;
-	float a3 = (f1 ^ f2).Size() / a;
-
-	return FVector2D(0, 0) * a1 + FVector2D(1.0f, 0) * a2 + FVector2D(0.0f, 1.0f) * a3;
 }
 
 void AWorldSpawn::gen_chunk() {
@@ -172,7 +175,7 @@ void AWorldSpawn::gen_chunk() {
 				FVector world_offset(x * 100.0f, y * 100.0f, z * 100.0f);
 
 				for (int i = 0; triTable[cubeindex][i] != -1; i += 3) {
-					/*const int NUM_TILESX = 2;
+					const int NUM_TILESX = 3;
 					const int NUM_TILESY = 1;
 					const float TILE_SIZEX = 1.0f / NUM_TILESX;
 					const float TILE_SIZEY = 1.0f / NUM_TILESY;
@@ -183,7 +186,8 @@ void AWorldSpawn::gen_chunk() {
 
 					BlockType type = hex->type;
 					if (type == BLOCK_TYPE_DIRT) offsetx = 0;
-					else if (type == BLOCK_TYPE_GRASS) offsetx = TILE_SIZEX;*/
+					else if (type == BLOCK_TYPE_GRASS) offsetx = TILE_SIZEX;
+					else if (type == BLOCK_TYPE_WATER) offsetx = TILE_SIZEX * 2.0f;
 
 					FVector v0 = vertlist[triTable[cubeindex][i]];
 					FVector v1 = vertlist[triTable[cubeindex][i + 1]];
@@ -192,6 +196,11 @@ void AWorldSpawn::gen_chunk() {
 					tri.v2.pos = (v0 * 100.0f) + world_offset;
 					tri.v1.pos = (v1 * 100.0f) + world_offset;
 					tri.v0.pos = (v2 * 100.0f) + world_offset;
+
+					FVector2D uv(offsetx, offsety);
+					tri.v2.uv = uv;
+					tri.v1.uv = uv;
+					tri.v0.uv = uv;
 
 					chunk_triangles.Add(tri);
 				}
@@ -206,7 +215,7 @@ void AWorldSpawn::gen_chunk() {
 	custom_mesh->SetGeneratedMeshTriangles(chunk_triangles);
 	custom_mesh->SetMaterial(0, texture_tiles_mat);
 
-    UE_LOG(LogTemp, Warning, TEXT("spawned"));
+    UE_LOG(LogTemp, Warning, TEXT("spawned. max_height: %f, at_z: %f"), max_t_height, max_z);
 }
 
 // Called every frame

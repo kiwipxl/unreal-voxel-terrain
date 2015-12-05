@@ -11,7 +11,8 @@ enum BlockType {
 
 	BLOCK_TYPE_AIR, 
 	BLOCK_TYPE_GRASS,
-	BLOCK_TYPE_DIRT
+	BLOCK_TYPE_DIRT, 
+	BLOCK_TYPE_WATER
 };
 
 struct Hex {
@@ -331,9 +332,9 @@ private:
 
     std::vector<Hex*> hex_list;
 
-	const int SIZEX = 20;
-	const int SIZEY = 20;
-	const int SIZEZ = 20;
+	const int SIZEX = 400;
+	const int SIZEY = 400;
+	const int SIZEZ = 100;
 
 	void gen_chunk();
 
