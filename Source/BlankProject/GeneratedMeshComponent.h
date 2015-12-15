@@ -4,6 +4,7 @@
 
 #include "BlankProject.h"
 #include "Components/MeshComponent.h"
+
 #include "GeneratedMeshComponent.generated.h"
 
 USTRUCT()
