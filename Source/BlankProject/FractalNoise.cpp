@@ -8,7 +8,7 @@ void FractalNoise::init() {
 	m_octaves = 12;
     m_lacunarity = 1.0f;
     m_persistence = 1.0f;
-    m_baseFrequency = 1.5f;
+    m_baseFrequency = 4.5f;
     m_baseAmplitude = 20.0f;
 }
 
