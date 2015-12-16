@@ -23,6 +23,7 @@ struct FNode {
 	int y;
 	int z;
 	BlockType type = BLOCK_TYPE_AIR;
+	FGeneratedMeshTriangle* tri;
 };
 
 UCLASS()
@@ -31,13 +32,15 @@ class UVoxelMesh : public UObject
 	GENERATED_BODY()
 	
 public:
-	void gen(float sizex_, float sizey_, float sizez_);
+	void gen(int sizex_, int sizey_, int sizez_);
 
-	float get_sizex() { return sizex; }
-	float get_sizey() { return sizey; }
-	float get_sizez() { return sizez; }
+	int get_sizex() { return sizex; }
+	int get_sizey() { return sizey; }
+	int get_sizez() { return sizez; }
 
 	FNode* get_node(int x, int y, int z);
+
+	void update(float dt);
 
 private:
 	std::vector<FNode*> nodes;

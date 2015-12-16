@@ -317,9 +317,9 @@ FVector vertex_interp(FVector p1, FVector p2, bool valp1, bool valp2)
 void gen_marching_cubes(UVoxelMesh* vmesh, TArray<FGeneratedMeshTriangle>* tris) {
 	int tri_index = 0;
 
-	for (int z = -1; z < vmesh->get_sizez(); ++z) {
-		for (int y = -1; y < vmesh->get_sizey(); ++y) {
-			for (int x = -1; x < vmesh->get_sizex(); ++x) {
+	for (int z = -1; z < vmesh->get_sizez() - 1; ++z) {
+		for (int y = -1; y < vmesh->get_sizey() - 1; ++y) {
+			for (int x = -1; x < vmesh->get_sizex() - 1; ++x) {
 				#define IS_NODE_AIR(x, y, z) (vmesh->get_node(x, y, z) != NULL && vmesh->get_node(x, y, z)->type == BLOCK_TYPE_AIR)
 
 				bool corner0 = !IS_NODE_AIR(x + 1, y, z + 1);
@@ -381,7 +381,7 @@ void gen_marching_cubes(UVoxelMesh* vmesh, TArray<FGeneratedMeshTriangle>* tris)
 					if (tri_index >= tris->Num()) tris->Add(FGeneratedMeshTriangle());
 					//get triangle from tri index
 					FGeneratedMeshTriangle& tri = (*tris)[tri_index];
-
+					
 					const int NUM_TILESX = 3;
 					const int NUM_TILESY = 1;
 					const float TILE_SIZEX = 1.0f / NUM_TILESX;
@@ -390,6 +390,8 @@ void gen_marching_cubes(UVoxelMesh* vmesh, TArray<FGeneratedMeshTriangle>* tris)
 					float offsetx = 0, offsety = 0;
 					FNode* node = vmesh->get_node(x, y, z);
 					if (!node) continue;
+					node->tri = &tri;
+					++tri_index;
 
 					BlockType type = node->type;
 					if (type == BLOCK_TYPE_DIRT) offsetx = 0;
@@ -412,8 +414,6 @@ void gen_marching_cubes(UVoxelMesh* vmesh, TArray<FGeneratedMeshTriangle>* tris)
 					tri.v2.colour = FColor(255, 0, 0);
 					tri.v1.colour = FColor(255, 0, 0);
 					tri.v0.colour = FColor(255, 0, 0);
-
-					++tri_index;
 				}
 			}
 		}

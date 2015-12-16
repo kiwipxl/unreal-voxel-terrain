@@ -22,6 +22,8 @@ AWorldSpawn::AWorldSpawn() {
 	UE_LOG(LogTemp, Warning, TEXT("ayy lmao: %p"), texture_tiles_mat);
 }
 
+UVoxelMesh* mesh;
+
 // Called when the game starts or when spawned
 void AWorldSpawn::BeginPlay() {
     Super::BeginPlay();
@@ -30,12 +32,21 @@ void AWorldSpawn::BeginPlay() {
 
 	world_spawn = this;
 
-	UVoxelMesh* mesh = NewObject<UVoxelMesh>();
-	mesh->gen(10, 10, 10);
+	mesh = NewObject<UVoxelMesh>();
+	mesh->gen(32, 32, 32);
 }
+
+float timer2 = 0;
 
 // Called every frame
 void AWorldSpawn::Tick(float dt) {
-    Super::Tick(dt);
+	Super::Tick(dt);
+
+	mesh->update(dt);
+
+	timer2 += dt;
+	if (timer2 >= 1) {
+		timer2 = 0;
+	}
 }
 

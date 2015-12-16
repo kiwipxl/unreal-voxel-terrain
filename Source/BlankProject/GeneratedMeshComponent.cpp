@@ -9,6 +9,8 @@
 #include "Engine/Engine.h"
 #include "Materials/Material.h"
 #include "PrimitiveSceneProxy.h"
+#include "PhysicsEngine/BodySetup.h"
+#include "PhysicsEngine/BodyInstance.h"
 
 /** Vertex Buffer */
 class FGeneratedMeshVertexBuffer : public FVertexBuffer
@@ -255,6 +257,8 @@ bool UGeneratedMeshComponent::SetGeneratedMeshTriangles(const TArray<FGeneratedM
 {
 	GeneratedMeshTris = Triangles;
 
+	UpdateCollision();
+
 	// Need to recreate scene proxy to send it over
 	MarkRenderStateDirty();
 
@@ -293,7 +297,6 @@ int32 UGeneratedMeshComponent::GetNumMaterials() const
 	return 1;
 }
 
-
 FBoxSphereBounds UGeneratedMeshComponent::CalcBounds(const FTransform& LocalToWorld) const
 {
 	FBoxSphereBounds NewBounds;
@@ -303,3 +306,52 @@ FBoxSphereBounds UGeneratedMeshComponent::CalcBounds(const FTransform& LocalToWo
 	return NewBounds;
 }
 
+bool UGeneratedMeshComponent::GetPhysicsTriMeshData(struct FTriMeshCollisionData* CollisionData, bool InUseAllTriData)
+{
+	FTriIndices Triangle;
+
+	for (int32 i = 0; i<GeneratedMeshTris.Num(); i++) {
+		const FGeneratedMeshTriangle& tri = GeneratedMeshTris[i];
+
+		Triangle.v0 = CollisionData->Vertices.Add(tri.v0.pos);
+		Triangle.v1 = CollisionData->Vertices.Add(tri.v1.pos);
+		Triangle.v2 = CollisionData->Vertices.Add(tri.v2.pos);
+
+		CollisionData->Indices.Add(Triangle);
+		CollisionData->MaterialIndices.Add(i);
+	}
+
+	CollisionData->bFlipNormals = true;
+
+	return true;
+}
+
+bool UGeneratedMeshComponent::ContainsPhysicsTriMeshData(bool InUseAllTriData) const
+{
+	return (GeneratedMeshTris.Num() > 0);
+}
+
+void UGeneratedMeshComponent::UpdateBodySetup() {
+	if (ModelBodySetup == NULL) {
+		ModelBodySetup = NewObject<UBodySetup>(this);
+		ModelBodySetup->CollisionTraceFlag = CTF_UseComplexAsSimple;
+		ModelBodySetup->bMeshCollideAll = true;
+	}
+}
+
+void UGeneratedMeshComponent::UpdateCollision() {
+	if (bPhysicsStateCreated) {
+		DestroyPhysicsState();
+		UpdateBodySetup();
+		CreatePhysicsState();
+
+		ModelBodySetup->InvalidatePhysicsData(); //Will not work in Packaged build
+												 //Epic needs to add support for this
+		ModelBodySetup->CreatePhysicsMeshes();
+	}
+}
+
+UBodySetup* UGeneratedMeshComponent::GetBodySetup() {
+	UpdateBodySetup();
+	return ModelBodySetup;
+}

@@ -39,11 +39,26 @@ struct FGeneratedMeshTriangle
 
 /** Component that allows you to specify generated triangle mesh geometry */
 UCLASS()
-class UGeneratedMeshComponent : public UMeshComponent
+class UGeneratedMeshComponent : public UMeshComponent, public IInterface_CollisionDataProvider
 {
 	GENERATED_UCLASS_BODY()
 
 public:
+
+	class UBodySetup* ModelBodySetup;
+
+	// Begin Interface_CollisionDataProvider Interface
+	virtual bool GetPhysicsTriMeshData(struct FTriMeshCollisionData* CollisionData, bool InUseAllTriData) override;
+	virtual bool ContainsPhysicsTriMeshData(bool InUseAllTriData) const override;
+	virtual bool WantsNegXTriMesh() override { return false; }
+	// End Interface_CollisionDataProvider Interface
+
+	// Begin UPrimitiveComponent interface.
+	virtual class UBodySetup* GetBodySetup() override;
+	// End UPrimitiveComponent interface.
+
+	void UpdateBodySetup();
+	void UpdateCollision();
 
 	///** Set the geometry to use on this triangle mesh */
 	UFUNCTION(BlueprintCallable, Category = "Components|GeneratedMesh")

@@ -13,7 +13,7 @@
 FractalNoise fnoise;
 UGeneratedMeshComponent* custom_mesh;
 
-void UVoxelMesh::gen(float sizex_, float sizey_, float sizez_) {
+void UVoxelMesh::gen(int sizex_, int sizey_, int sizez_) {
 	sizex = sizex_;
 	sizey = sizey_;
 	sizez = sizez_;
@@ -31,16 +31,18 @@ void UVoxelMesh::gen(float sizex_, float sizey_, float sizez_) {
 				nodes.push_back(node);
 
 				gen_node(x, y, z);
+
+				node->type = BLOCK_TYPE_DIRT;
+				if (x <= 0 || y <= 0 || z <= 0 || x >= sizex - 1 || y >= sizey - 1 || z >= sizez - 1) node->type = BLOCK_TYPE_AIR;
 			}
 		}
 	}
 
 	gen_marching_cubes(this, &tris);
 
-	UE_LOG(LogTemp, Warning, TEXT("x: %f, y: %f, z: %f, %d"), tris[1000].v0.pos.X, tris[1000].v0.pos.Y, tris[1000].v0.pos.Z, tris.Num());
-
 	custom_mesh = NewObject<UGeneratedMeshComponent>(world_spawn);
 	custom_mesh->RegisterComponent();
+	world_spawn->SetActorEnableCollision(true);
 
 	custom_mesh->SetGeneratedMeshTriangles(tris);
 	custom_mesh->SetMaterial(0, texture_tiles_mat);
@@ -81,4 +83,20 @@ BlockType UVoxelMesh::get_type(int x, int y, int z) {
 void UVoxelMesh::gen_node(int x, int y, int z) {
     FNode* node = get_node(x, y, z);
 	if (node) node->type = get_type(x, y, z);
+}
+
+float timer = 0;
+float offsetx = 0;
+float total_time = 0;
+
+void UVoxelMesh::update(float dt) {
+	timer += dt;
+	total_time += dt;
+
+	if (timer >= 1) {
+		timer = 0;
+
+		//gen_marching_cubes(this, &tris);
+		custom_mesh->SetGeneratedMeshTriangles(tris);
+	}
 }
