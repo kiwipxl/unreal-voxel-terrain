@@ -30,9 +30,7 @@ void UVoxelMesh::gen(int sizex_, int sizey_, int sizez_) {
 				node->z = z;
 				nodes.push_back(node);
 
-				gen_node(x, y, z);
-
-				node->type = BLOCK_TYPE_DIRT;
+				node->type = BLOCK_TYPE_GRID;
 				if (x <= 0 || y <= 0 || z <= 0 || x >= sizex - 1 || y >= sizey - 1 || z >= sizez - 1) node->type = BLOCK_TYPE_AIR;
 			}
 		}
@@ -56,35 +54,6 @@ FNode* UVoxelMesh::get_node(int x, int y, int z) {
     return nodes[index];
 }
 
-float UVoxelMesh::get_height(int x, int y, int z) {
-	float t_height = fnoise.noise(x / (float)sizex, y / (float)sizey, z / (float)sizez);
-	t_height -= (z / (float)sizez) * 8.0f;
-
-	return t_height;
-}
-
-BlockType UVoxelMesh::get_type(int x, int y, int z) {
-	float t_height = get_height(x, y, z);
-	BlockType type = BLOCK_TYPE_AIR;
-
-	//fill all boundaries of chunk with air
-	if (x <= 0 || y <= 0 || z <= 0 || x >= sizex - 1 || y >= sizey - 1 || z >= sizez - 1) return type;
-
-	if (z <= 1) type = BLOCK_TYPE_WATER;
-
-	if (t_height > 0) {
-		type = BLOCK_TYPE_DIRT;
-		if (get_height(x, y, z + 1) < 0) type = BLOCK_TYPE_GRASS;
-	}
-
-	return type;
-}
-
-void UVoxelMesh::gen_node(int x, int y, int z) {
-    FNode* node = get_node(x, y, z);
-	if (node) node->type = get_type(x, y, z);
-}
-
 float timer = 0;
 float offsetx = 0;
 float total_time = 0;
@@ -96,7 +65,7 @@ void UVoxelMesh::update(float dt) {
 	if (timer >= 1) {
 		timer = 0;
 
-		//gen_marching_cubes(this, &tris);
+		gen_marching_cubes(this, &tris);
 		custom_mesh->SetGeneratedMeshTriangles(tris);
 	}
 }

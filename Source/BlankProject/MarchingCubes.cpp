@@ -307,9 +307,9 @@ an edge between two vertices, each with their own scalar value
 */
 FVector vertex_interp(FVector p1, FVector p2, bool valp1, bool valp2)
 {
-	if (!valp1) return p1;
-	if (!valp2) return p2;
-	return p1;
+	//if (!valp1) return p1;
+	//if (!valp2) return p2;
+	//return p1;
 
 	return p1 + (p2 - p1) / 2.0f;
 }
@@ -320,6 +320,9 @@ void gen_marching_cubes(UVoxelMesh* vmesh, TArray<FGeneratedMeshTriangle>* tris)
 	for (int z = -1; z < vmesh->get_sizez() - 1; ++z) {
 		for (int y = -1; y < vmesh->get_sizey() - 1; ++y) {
 			for (int x = -1; x < vmesh->get_sizex() - 1; ++x) {
+				//if (x <= 0 || y <= 0 || z <= 0 ||
+				//	x >= vmesh->get_sizex() - 1 || y >= vmesh->get_sizey() - 1 || z >= vmesh->get_sizez() - 1) continue;
+
 				#define IS_NODE_AIR(x, y, z) (vmesh->get_node(x, y, z) != NULL && vmesh->get_node(x, y, z)->type == BLOCK_TYPE_AIR)
 
 				bool corner0 = !IS_NODE_AIR(x + 1, y, z + 1);
@@ -388,15 +391,14 @@ void gen_marching_cubes(UVoxelMesh* vmesh, TArray<FGeneratedMeshTriangle>* tris)
 					const float TILE_SIZEY = 1.0f / NUM_TILESY;
 
 					float offsetx = 0, offsety = 0;
-					FNode* node = vmesh->get_node(x, y, z);
+					FNode* node = vmesh->get_node(x <= 0 ? 1 : x, y <= 0 ? 1 : y, z <= 0 ? 1 : z);
 					if (!node) continue;
 					node->tri = &tri;
 					++tri_index;
 
 					BlockType type = node->type;
-					if (type == BLOCK_TYPE_DIRT) offsetx = 0;
-					else if (type == BLOCK_TYPE_GRASS) offsetx = TILE_SIZEX;
-					else if (type == BLOCK_TYPE_WATER) offsetx = TILE_SIZEX * 2.0f;
+					if (type == BLOCK_TYPE_GRID) offsetx = 0;
+					else if (type == BLOCK_TYPE_SELECTED) offsetx = TILE_SIZEX;
 
 					FVector v0 = vert_list[tri_table[cube_index][i]];
 					FVector v1 = vert_list[tri_table[cube_index][i + 1]];

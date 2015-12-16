@@ -12,9 +12,8 @@
 enum BlockType {
 
 	BLOCK_TYPE_AIR, 
-	BLOCK_TYPE_GRASS,
-	BLOCK_TYPE_DIRT, 
-	BLOCK_TYPE_WATER
+	BLOCK_TYPE_GRID, 
+	BLOCK_TYPE_SELECTED
 };
 
 struct FNode {
@@ -49,10 +48,4 @@ private:
 	float sizex;
 	float sizey;
 	float sizez;
-
-	BlockType get_type(int x, int y, int z);
-	float get_height(int x, int y, int z);
-
-    void gen_node(int x, int y, int z);
-	void del_node(int x, int y, int z);
 };
