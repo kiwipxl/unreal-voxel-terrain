@@ -30,7 +30,11 @@ void UVoxelMesh::gen(int sizex_, int sizey_, int sizez_) {
 				node->z = z;
 				nodes.push_back(node);
 
-				node->type = BLOCK_TYPE_GRID;
+				float height = fnoise.noise(x / (float)sizex, y / (float)sizey, z / (float)sizez);
+				if (height > 0) node->type = BLOCK_TYPE_GRID;
+				else node->type = BLOCK_TYPE_AIR;
+
+				//node->type = BLOCK_TYPE_GRID;
 				if (x <= 0 || y <= 0 || z <= 0 || x >= sizex - 1 || y >= sizey - 1 || z >= sizez - 1) node->type = BLOCK_TYPE_AIR;
 			}
 		}
@@ -64,8 +68,8 @@ void UVoxelMesh::update(float dt) {
 
 	if (timer >= 1) {
 		timer = 0;
-
-		gen_marching_cubes(this, &tris);
-		custom_mesh->SetGeneratedMeshTriangles(tris);
 	}
+
+	gen_marching_cubes(this, &tris);
+	custom_mesh->SetGeneratedMeshTriangles(tris);
 }
